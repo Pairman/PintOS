@@ -1,3 +1,4 @@
-# 1.1-thread-alarm-clock
+# 1.2-thread-priority-preempt
 
+Added support for priority preemption scheduling.
 Added support for alarm clocks.
