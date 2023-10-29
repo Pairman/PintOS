@@ -262,7 +262,7 @@ bool thread_cmp_ticks_sleep(const struct list_elem *e1,
 	struct thread *t1;
 	struct thread *t2;
 
-	/* Convert sleepelems to locks. */
+	/* Convert sleepelems to threads. */
 	t1 = list_entry(e1, struct thread, sleepelem);
 	t2 = list_entry(e2, struct thread, sleepelem);
 
