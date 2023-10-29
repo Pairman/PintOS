@@ -20,6 +20,9 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+/* List of processes sleeping a.k.a. blocked with ticks_sleep to come. */
+static struct list sleep_list;
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -90,6 +93,8 @@ thread_init (void)
   ASSERT (intr_get_level () == INTR_OFF);
 
   lock_init (&tid_lock);
+	/* Initialize sleep_list. */
+	list_init(&sleep_list);
   list_init (&ready_list);
   list_init (&all_list);
 
@@ -240,6 +245,93 @@ thread_unblock (struct thread *t)
   list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
+}
+
+/**
+ * thread_cmp_ticks_sleep - compare two threads' ticks_sleep
+ * 
+ * @e1: pointer to sleepelem of one thread.
+ * @e2: pointer to sleepelem of another thread.
+ * @aux: direction of comparison.
+ *
+ * Compare two threads' ticks_sleep.
+*/
+bool thread_cmp_ticks_sleep(const struct list_elem *e1,
+			    const struct list_elem *e2, void *aux)
+{
+	struct thread *t1;
+	struct thread *t2;
+
+	/* Convert sleepelems to locks. */
+	t1 = list_entry(e1, struct thread, sleepelem);
+	t2 = list_entry(e2, struct thread, sleepelem);
+
+	if (*(bool *)aux)
+		return t1->ticks_sleep > t2->ticks_sleep;
+	return t1->ticks_sleep < t2->ticks_sleep;
+}
+
+/**
+ * thread_sleep - put the current thread to sleep
+ *
+ * @ticks: ticks to sleep until
+ *
+ * Put the current thread to sleep until OS ticks reaching the given ticks.
+ * Must be called with interrupts turned off.
+*/
+void thread_sleep(int64_t ticks)
+{
+	struct thread *current;
+	bool aux;
+
+	ASSERT(!intr_context());
+	ASSERT(intr_get_level() == INTR_OFF);
+
+	current = thread_current();
+	/* Set ticks_sleep. */
+	current->ticks_sleep = ticks;
+	/* Insert to sleep list with ticks_sleep ascending. */
+	aux = false;
+	list_insert_ordered(&sleep_list, &current->sleepelem,
+			    thread_cmp_ticks_sleep, &aux);
+	/* Block the current thread. */
+	thread_block();
+}
+
+/**
+ * thread_foreach_wake - wake threads if ticks_sleep reached the given ticks
+ *
+ * Wake threads in sleep_list if the given ticks has reached its ticks_sleep.
+ * Must be called with interrupts turned off.
+*/
+void thread_foreach_wake(int64_t ticks)
+{
+	struct list_elem *e;
+	struct list_elem *e_next;
+	struct thread *t;
+
+	ASSERT(intr_get_level() == INTR_OFF);
+
+	e = list_begin(&sleep_list);
+	while (e && e != list_end(&sleep_list)) {
+		e_next = list_next(e);
+
+		t = list_entry (e, struct thread, sleepelem);
+		/* Wake up any thread with ticks_sleep reached. */
+		if (t->ticks_sleep <= ticks) {
+			/* Remove from sleep_list and reset ticks_sleep. */
+			list_remove(e);
+			t->ticks_sleep = 0;
+			/* Unblock this thread. */
+			thread_unblock(t);
+		}
+		/* Stop since no one left since ticks_sleep is ascending. */
+		else {
+			break;
+		}
+
+		e = e_next;
+	}
 }
 
 /* Returns the name of the running thread. */
@@ -461,6 +553,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
+	/* Initialize ticks_sleep. */
+	t->ticks_sleep = 0;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 

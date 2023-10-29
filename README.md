@@ -1,2 +1,3 @@
-# 0.0 - base
-Base code for PintOS
+# 1.1-thread-alarm-clock
+
+Added support for alarm clocks.
