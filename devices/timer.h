@@ -5,7 +5,9 @@
 #include <stdint.h>
 
 /* Number of timer interrupts per second. */
+#ifndef TIMER_FREQ
 #define TIMER_FREQ 100
+#endif
 
 void timer_init (void);
 void timer_calibrate (void);
