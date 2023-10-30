@@ -848,15 +848,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
-	/* Initialize ticks_sleep. */
-	t->ticks_sleep = 0;
 	/* Initialize priority. */
 	t->priority = t->base_priority = priority;
-	/* Initialize niceness and recent_cpu. */
-	t->nice = 0;
-	t->recent_cpu = FP_FIX(0);
-	/* Initialize locks. */
-	t->lock_waiting = NULL;
+	/* Initialize locks list. */
 	list_init(&t->locks);
   t->magic = THREAD_MAGIC;
 
