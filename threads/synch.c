@@ -142,8 +142,13 @@ void sema_up(struct semaphore *sema)
 	/* Increase value of the semaphore. */
 	sema->value++;
 	/* Yield if the thread above is more prioritized. */
-	if (f_yield)
-		thread_yield();
+	if (f_yield) {
+		/* Fix kernel panics from early scheduling. */
+		if (intr_context())
+			intr_yield_on_return();
+		else
+			thread_yield();
+	}
 
 	intr_set_level(old_level);
 }
