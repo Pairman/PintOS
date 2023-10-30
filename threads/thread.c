@@ -592,6 +592,7 @@ static void
 init_thread (struct thread *t, const char *name, int priority)
 {
   enum intr_level old_level;
+	bool aux;
 
   ASSERT (t != NULL);
   ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
@@ -607,7 +608,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
-  list_push_back (&all_list, &t->allelem);
+	/* Insert to all_list. */
+	aux = true;
+	list_insert_ordered(&all_list, &t->allelem, thread_cmp_priority, &aux);
   intr_set_level (old_level);
 }
 
