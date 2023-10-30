@@ -22,8 +22,12 @@ struct lock
   {
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
+    int priority;		/* Max priority of the threads acquiring it. */
+    struct list_elem elem;	/* List element for holder thread. */
   };
 
+bool lock_cmp_priority(const struct list_elem *, const struct list_elem *,
+		       void *);
 void lock_init (struct lock *);
 void lock_acquire (struct lock *);
 bool lock_try_acquire (struct lock *);
@@ -35,6 +39,9 @@ struct condition
   {
     struct list waiters;        /* List of waiting threads. */
   };
+
+bool semaphore_elem_cmp_priority(const struct list_elem *,
+				 const struct list_elem *, void *);
 
 void cond_init (struct condition *);
 void cond_wait (struct condition *, struct lock *);
