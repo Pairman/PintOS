@@ -832,33 +832,41 @@ is_thread (struct thread *t)
   return t != NULL && t->magic == THREAD_MAGIC;
 }
 
-/* Does basic initialization of T as a blocked thread named
-   NAME. */
-static void
-init_thread (struct thread *t, const char *name, int priority)
+/**
+ * init_thread- basic initialization of a thread
+ *
+ * @t: pointer to the thread
+ * @name: pointer to the name
+ * @priority: the priority
+ *
+ * Does basic initialization of a thread with
+ * the given name and priority and being blocked.
+*/
+static void init_thread(struct thread *t, const char *name, int priority)
 {
-  enum intr_level old_level;
+	enum intr_level old_level;
 	bool aux;
 
-  ASSERT (t != NULL);
-  ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
-  ASSERT (name != NULL);
+	ASSERT(t != NULL);
+	ASSERT(PRI_MIN <= priority && priority <= PRI_MAX);
+	ASSERT(name != NULL);
 
-  memset (t, 0, sizeof *t);
-  t->status = THREAD_BLOCKED;
-  strlcpy (t->name, name, sizeof t->name);
-  t->stack = (uint8_t *) t + PGSIZE;
+	memset(t, 0, sizeof *t);
+	t->status = THREAD_BLOCKED;
+	strlcpy(t->name, name, sizeof t->name);
+	t->stack = (uint8_t *)t + PGSIZE;
 	/* Initialize priority. */
 	t->priority = t->base_priority = priority;
 	/* Initialize locks list. */
 	list_init(&t->locks);
-  t->magic = THREAD_MAGIC;
 
-  old_level = intr_disable ();
+	t->magic = THREAD_MAGIC;
+
+	old_level = intr_disable();
 	/* Insert to all_list. */
 	aux = true;
 	list_insert_ordered(&all_list, &t->allelem, thread_cmp_priority, &aux);
-  intr_set_level (old_level);
+	intr_set_level(old_level);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
