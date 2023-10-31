@@ -1,4 +1,6 @@
-# 1.4-thread-mlfqs-scheduler
+# 2.1-process-termination-message
+
+Added support for process termination message.
 
 Added support for mlfqs scheduler. <br>
 Added support for priority donation. <br>
