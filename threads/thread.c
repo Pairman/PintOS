@@ -392,6 +392,32 @@ thread_tid (void)
   return thread_current ()->tid;
 }
 
+/**
+ * thread_from_tid - return the thread with the given tid
+ *
+ * @tid: the tid
+ *
+ * Return the thread with the given tid.
+ * Must be called with interrupts turned off.
+*/
+struct thread *thread_from_tid(tid_t tid)
+{
+	struct list_elem *e;
+	struct thread *t;
+
+	ASSERT(intr_get_level() == INTR_OFF);
+
+	for (e = list_begin(&all_list); e != list_end(&all_list);
+	     e = list_next(e)) {
+		t = list_entry(e, struct thread, allelem);
+		if (t->tid == tid)
+			return t;
+	}
+
+	/* Return NULL if no corresponding thread exists. */
+	return NULL;
+}
+
 /* Deschedules the current thread and destroys it.  Never
    returns to the caller. */
 void

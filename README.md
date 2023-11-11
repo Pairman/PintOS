@@ -1,5 +1,6 @@
-# 2.1-process-termination-message
+# 2.2-argument-passing
 
+Added support for process argument passing. <br>
 Added support for process termination message.
 
 Added support for mlfqs scheduler. <br>

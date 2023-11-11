@@ -139,6 +139,7 @@ void thread_sleep(int64_t);
 void thread_foreach_wake(int64_t);
 
 struct thread *thread_current (void);
+struct thread *thread_from_tid(tid_t);
 tid_t thread_tid (void);
 const char *thread_name (void);
 

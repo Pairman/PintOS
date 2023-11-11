@@ -21,59 +21,134 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
-/* Starts a new thread running a user program loaded from
-   FILENAME.  The new thread may be scheduled (and may even exit)
-   before process_execute() returns.  Returns the new process's
-   thread id, or TID_ERROR if the thread cannot be created. */
-tid_t
-process_execute (const char *file_name) 
+/**
+ * process_Execute - start a process running a user program
+ *
+ * @proc_cmd: pointer to the arguments unparsed
+ *
+ * Starts a new thread running a user program loaded from FILENAME.
+ * The new thread may be scheduled (and may even exit) before 
+ * process_execute() returns. Returns the new process's thread id,
+ * or TID_ERROR if the thread cannot be created.
+*/
+tid_t process_execute(const char *proc_cmd_)
 {
-  char *fn_copy;
-  tid_t tid;
+	char *proc_name;
+	char *proc_cmd;
+	char *saveptr;
+	tid_t tid;
 
-  /* Make a copy of FILE_NAME.
-     Otherwise there's a race between the caller and load(). */
-  fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
-    return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+	/* Make two copies of proc_cmd for process name and start_process. */
+	/* Otherwise there's a race between the caller and load(). */
+	proc_name = palloc_get_page(0);
+	if (!proc_name)
+		return TID_ERROR;
+	proc_cmd = palloc_get_page(0);
+	if (!proc_cmd)
+		return TID_ERROR;
+	strlcpy(proc_name, proc_cmd_, PGSIZE);
+	strlcpy(proc_name, proc_cmd_, PGSIZE);
 
-  /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
-  return tid;
+	/* Split the process name from the other arguments. */
+	proc_name = strtok_r(proc_name, " ", &saveptr);
+
+	/* Create a thread with proc_name and unparsed proc_cmd. */
+	tid = thread_create(proc_name, PRI_DEFAULT, start_process, proc_cmd);
+	/* Free the extra page since process name was copied in init_thread. */
+	palloc_free_page(proc_name);
+	if (tid == TID_ERROR)
+		palloc_free_page(proc_cmd);
+	return tid;
 }
 
-/* A thread function that loads a user process and starts it
-   running. */
-static void
-start_process (void *file_name_)
+/**
+ * start_process - load and start a user process
+ *
+ * @proc_cmd_: pointer to the commands.
+ *
+ * A thread function that loads a user process
+ * and starts it running.
+*/
+static void start_process(void *proc_cmd_)
 {
-  char *file_name = file_name_;
-  struct intr_frame if_;
-  bool success;
+	struct intr_frame if_;
+	char *saveptr;
+	char proc_cmd;
+	char *proc_name;
+	char *token;
+	void *argv[ARG_MAX];
+	int argc;
+	int i;
+	size_t len;
+	size_t vptrlen;
+	bool success;
 
-  /* Initialize interrupt frame and load executable. */
-  memset (&if_, 0, sizeof if_);
-  if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
-  if_.cs = SEL_UCSEG;
-  if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+	/* Initialize interrupt frame and load executable. */
+	memset(&if_, 0, sizeof(if_));
+	if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
+	if_.cs = SEL_UCSEG;
+	if_.eflags = FLAG_IF | FLAG_MBS;
 
-  /* If load failed, quit. */
-  palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
+	/* Parse process name for ELF loading. */
+	if (proc_name = palloc_get_page(0))
+		return;
+	strlcpy(proc_name, proc_cmd_, PGSIZE);
+	proc_name = strtok_r(proc_name, " ", &saveptr);
+	success = load(proc_name, &if_.eip, &if_.esp);
+	palloc_free_page(proc_name);
 
-  /* Start the user process by simulating a return from an
-     interrupt, implemented by intr_exit (in
-     threads/intr-stubs.S).  Because intr_exit takes all of its
-     arguments on the stack in the form of a `struct intr_frame',
-     we just point the stack pointer (%esp) to our stack frame
-     and jump to it. */
-  asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
-  NOT_REACHED ();
+	/* If load failed, quit. */
+	palloc_free_page(proc_cmd_);
+	if (!success)
+		thread_exit();
+
+	/* Arguments parsing. */
+	/* 1. Move the stack pointer ESP to the beginning */
+	/*    of the user virtual address space. */
+	if_.esp = PHYS_BASE;
+
+	/* 2. Parse proc_cmd and save address to each token atop the stack. */
+	argc = 0;
+	proc_cmd = proc_cmd_;
+	for (token = strtok_r(proc_cmd, " ", &saveptr); token;
+	     token = strtok_r(NULL, " ", &saveptr)) {
+		/* Move down ESP and store the token. */
+		/* len + 1 for the trailing '\0'. */
+		if_.esp -= (len = strlen(token) + 1);
+		memcpy(if_.esp, token, len);
+		argv[argc++] = if_.esp;
+	}
+
+	/* 3. Round the ESP down to the multiple of 4 bytes for performance. */
+	if_.esp = (void *)((uintptr_t)if_.esp - (uintptr_t)if_.esp % 4);
+
+	/* 4. Push a null pointer sentinel on the stack, and then */
+	/*    the address of each token, all in right-to-left order. */
+	vptrlen = sizeof(void *);
+	memset(if_.esp -= vptrlen, 0, vptrlen);
+	for (i = argc - 1; i >= 0; --i)
+		memset(if_.esp -= vptrlen, &argv[i], vptrlen);
+
+	/* 5. Push the address of argv, and then argc in right-to-left order. */
+	if_.esp -= vptrlen;
+	*(uintptr_t *)if_.esp = ((uintptr_t)if_.esp + vptrlen);
+	*(int *)if_.esp = argc;
+
+	/* 6. Push a fake "return address", a.k.a. 0. */
+	memset(if_.esp -= vptrlen, 0, vptrlen);
+
+	/* DEBUGGING INFORMATION FOR THE STACK. */
+	printf("(start_process) esp:%p, argc:%d, &argv:%p\n", if_.esp, argc, argv);
+	hex_dump((uintptr_t)if_.esp, if_.esp, ARG_MAX, true);
+
+	/* Start the user process by simulating a return from an
+	interrupt, implemented by intr_exit (in
+	threads/intr-stubs.S).  Because intr_exit takes all of its
+	arguments on the stack in the form of a `struct intr_frame',
+	we just point the stack pointer (%esp) to our stack frame
+	and jump to it. */
+	asm volatile("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
+	NOT_REACHED();
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
