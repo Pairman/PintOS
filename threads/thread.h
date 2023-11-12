@@ -2,13 +2,8 @@
 #define THREADS_THREAD_H
 
 #include <debug.h>
-#include <fixed_point.h>
 #include <list.h>
 #include <stdint.h>
-
-/* Number of timer interrupts per second. */
-/* Defined here for thread_tick. */
-#define TIMER_FREQ 100
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -95,8 +90,7 @@ struct thread
     int64_t ticks_sleep;		/* Timer ticks when the sleep ends. */
     int base_priority;			/* Base priority before donation. */
     int priority;                       /* Priority. */
-    int nice;				/* Niceness. */
-    fixed_t recent_cpu;			/* Recent cpu time. */
+
     struct lock *lock_waiting;		/* The lock waiting for. */
     struct list locks;			/* All locks held by the thread. */
 
@@ -158,13 +152,9 @@ void thread_donate_priority(struct thread *);
 void thread_hold_lock(struct lock *);
 void thread_release_lock(struct lock *);
 
-int thread_get_nice(void);
-void thread_set_nice(int);
-int thread_get_recent_cpu(void);
-int thread_get_load_avg(void);
-void thread_mlfqs_update_priority(struct thread *);
-void thread_mlfqs_increment_recent_cpu(void);
-void thread_mlfqs_update_load_avg(void);
-void thread_mlfqs_update_recent_cpu(void);
+int thread_get_nice (void);
+void thread_set_nice (int);
+int thread_get_recent_cpu (void);
+int thread_get_load_avg (void);
 
 #endif /* threads/thread.h */
