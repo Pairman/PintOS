@@ -91,7 +91,7 @@ pintos_init (void)
   console_init ();  
 
   /* Greet user. */
-  printf ("Pairman's PintOS booting with %'"PRIu32" kB RAM...\n",
+  printf ("Pintos booting with %'"PRIu32" kB RAM...\n",
           init_ram_pages * PGSIZE / 1024);
 
   /* Initialize memory system. */
