@@ -1,4 +1,4 @@
-# 1.3-thread-priority-donate
+# 1.4-thread-mlfqs-scheduler
 
 Added support for mlfqs scheduler. <br>
 Added support for priority donation. <br>
