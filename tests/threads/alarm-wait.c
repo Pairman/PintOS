@@ -82,7 +82,7 @@ test_sleep (int thread_cnt, int iterations)
   for (i = 0; i < thread_cnt; i++)
     {
       struct sleep_thread *t = threads + i;
-      char name[18];
+      char name[16];
       
       t->test = &test;
       t->id = i;

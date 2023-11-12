@@ -57,7 +57,7 @@ test_sleep (int thread_cnt, int iterations)
   ASSERT (output != NULL);
   for (i = 0; i < thread_cnt; i++)
     {
-      char name[18];
+      char name[16];
       snprintf (name, sizeof name, "thread %d", i);
       thread_create (name, PRI_DEFAULT, sleeper, &test);
     }
