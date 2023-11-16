@@ -1,4 +1,4 @@
-# 2.2-argument-passing
+# 2.2-process-argument-passing
 
 Added support for process argument passing. <br>
 Added support for process termination message.
